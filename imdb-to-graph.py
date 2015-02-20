@@ -1,4 +1,5 @@
 import sqlite3
+VERTEX = False
 
 def open_connection():
     conn = sqlite3.connect('imdb.db')
@@ -63,7 +64,7 @@ with open('movies.json', 'w') as w:
             producers = [producer[0] for producer in producers]
             for producer in producers:
                 for movie_actor in movies[movie_id]:
-                        movies[movie_id][actor].append((producer, 0))
+                        movies[movie_id][actor].append((producer, 1))
 
 
             directors=cursor.execute("SELECT distinct(cast_info.person_id) from cast_info join movie_info on cast_info.movie_id = movie_info.movie_id where cast_info.role_id=8 and movie_info.movie_id="+movie_id)
@@ -103,7 +104,7 @@ print "actors " + str(len(actor_mapping))
 ctr = defaultdict(int)
 ctr_no_maj = 0
 ctr_maj = 0
-if False:
+if VERTEX:
     from collections import Counter
     with open('map.csv', 'w') as w:
         for actor, genres in actor_mapping.iteritems():
