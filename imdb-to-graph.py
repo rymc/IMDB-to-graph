@@ -77,6 +77,8 @@ with open('movies.json', 'w') as w:
         
             plot=cursor.execute("SELECT distinct(movie_info.info) from movie_info where movie_info.info_type_id=98 and movie_info.movie_id="+movie_id)
 
+            movies[movie_id][actor].append((movie_id, 3))
+
             plot = plot.fetchone()
             if plot is None:
                 continue
