@@ -22,7 +22,6 @@ def set_default(obj):
 
 from collections import defaultdict
 
-movies = defaultdict(set)
 actor_mapping = defaultdict(list)
 movie_mapping = defaultdict(list)
 
@@ -38,14 +37,16 @@ genre_count = defaultdict(int)
 with open('movies.json', 'w') as w:
     with open('movie_ids.csv') as r:
         for movie_id in r:
+            no_plot = False
+            movies = defaultdict(set)
             genre=cursor.execute("SELECT distinct(movie_info.info) from movie_info where movie_info.info_type_id=3 and movie_info.movie_id="+movie_id)
             genre = genre.fetchall()   
             if len(genre) != 1 or genre_count[genre[0][0]] >= 2500:
                 continue
-            movie_mapping[movie_id] = genre
 
             movies = defaultdict(lambda: defaultdict(list))
             movie_id = movie_id.rstrip()
+            movie_mapping[movie_id] = genre[0][0]
             actors=cursor.execute("SELECT distinct(cast_info.person_id) from cast_info join movie_info on cast_info.movie_id = movie_info.movie_id where (cast_info.role_id=1 or cast_info.role_id=2) and movie_info.movie_id="+movie_id)
             
             actors = actors.fetchall()
@@ -55,45 +56,43 @@ with open('movies.json', 'w') as w:
             for actor in actors:
                 for movie_actor in movies[movie_id]:
                     if actor != movie_actor:
-                        movies[movie_id][movie_actor].append((actor, 0))
+                        movies[movie_id][actor].append((movie_actor, 0))
             
 
-            producers=cursor.execute("SELECT distinct(cast_info.person_id) from cast_info join movie_info on cast_info.movie_id = movie_info.movie_id where cast_info.role_id=3 and movie_info.movie_id="+movie_id)
+                producers=cursor.execute("SELECT distinct(cast_info.person_id) from cast_info join movie_info on cast_info.movie_id = movie_info.movie_id where cast_info.role_id=3 and movie_info.movie_id="+movie_id)
 
-            producers = producers.fetchall()
-            producers = [producer[0] for producer in producers]
-            for producer in producers:
-                for movie_actor in movies[movie_id]:
-                        movies[movie_id][actor].append((producer, 1))
+                producers = producers.fetchall()
+                producers = [producer[0] for producer in producers]
+                for producer in producers:
+                    movies[movie_id][actor].append((producer, 1))
 
 
-            directors=cursor.execute("SELECT distinct(cast_info.person_id) from cast_info join movie_info on cast_info.movie_id = movie_info.movie_id where cast_info.role_id=8 and movie_info.movie_id="+movie_id)
+                directors=cursor.execute("SELECT distinct(cast_info.person_id) from cast_info join movie_info on cast_info.movie_id = movie_info.movie_id where cast_info.role_id=8 and movie_info.movie_id="+movie_id)
 
-            directors = directors.fetchall()
-            directors = [director[0] for director in directors]
-            for director in directors:
-                for movie_actor in movies[movie_id]:
-                        movies[movie_id][actor].append((director, 2))
-        
-            plot=cursor.execute("SELECT distinct(movie_info.info) from movie_info where movie_info.info_type_id=98 and movie_info.movie_id="+movie_id)
+                directors = directors.fetchall()
+                directors = [director[0] for director in directors]
+                for director in directors:
+                     movies[movie_id][actor].append((director, 2))
+            
+                plot=cursor.execute("SELECT distinct(movie_info.info) from movie_info where movie_info.info_type_id=98 and movie_info.movie_id="+movie_id)
 
-            movies[movie_id][actor].append((movie_id, 3))
 
-            plot = plot.fetchone()
-            if plot is None:
-                continue
-            else:
-                tokens = word_tokenize(plot[0])
-                for token in tokens:
-                    token = token.lower()
-                    token = token.replace(".", "")
-                    token = token.replace(",", "")
-                    if token not in stop_words and wn.synsets(token):
-                            for movie_actor in movies[movie_id]:
-                                    movies[movie_id][movie_actor].append((token,3))
+                plot = plot.fetchone()
+                if plot is None:
+                    no_plot = True
+                    break
+                else:
+                    tokens = word_tokenize(plot[0])
+                    for token in tokens:
+                        token = token.lower()
+                        token = token.replace(".", "")
+                        token = token.replace(",", "")
+                        if token not in stop_words and wn.synsets(token):
+                            movies[movie_id][actor].append((token,3))
                                     
+                movies[movie_id][actor].append((movie_id, 4))
 
-            if len(movies[movie_id]) > 0:
+            if len(movies[movie_id]) > 0 and not no_plot:
                 genre_count[genre[0][0]] += 1
                 json.dump(movies[movie_id], w)
                 w.write("\n")
@@ -143,6 +142,7 @@ else:
     from collections import Counter
     with open('movie-map.csv', 'w') as w:
         for movie, genre in movie_mapping.iteritems():
-            w.write(str(actor)+"\t")
+            w.write(str(movie)+"\t")
             w.write(genre)
+            w.write("\n")
 
